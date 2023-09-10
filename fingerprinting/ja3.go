@@ -1,15 +1,11 @@
-package main
+package fingerprinting
 
 import (
 	"crypto/md5"
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/hex"
 	"fmt"
 	"log"
-	"math/big"
+	"net"
 	"net/http"
 	"sort"
 	"strconv"
@@ -17,21 +13,33 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fidraC/QRCanary/utils"
 	"github.com/honeytrap/honeytrap/services/ja3/crypto/tls"
 )
 
-var cert = GenX509KeyPair()
+func NewHandler() *TLSHandler {
+	return &TLSHandler{
+		TLSCert: GenX509KeyPair(),
+	}
+}
 
-type tlsHandler struct {
+func NewListener(handler *TLSHandler) (net.Listener, error) {
+	return tls.Listen("tcp", ":4443", &tls.Config{
+		GetCertificate: handler.GetCertificate,
+	})
+}
+
+type TLSHandler struct {
 	sortedJa3    string
 	ja3          string
 	sortedDigest string
 	ja3Digest    string
 	chiLock      sync.Mutex
 	chiLockState bool
+	TLSCert      *tls.Certificate
 }
 
-func (t *tlsHandler) GetClientInfo(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+func (t *TLSHandler) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	t.chiLock.Lock()
 	t.chiLockState = true
 	t.ja3 = JA3(info)
@@ -53,69 +61,33 @@ func (t *tlsHandler) GetClientInfo(info *tls.ClientHelloInfo) (*tls.Certificate,
 		}
 	}()
 
-	return cert, nil
+	return t.TLSCert, nil
 }
 
-func (t *tlsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ja3 := t.ja3
-	ja3Digest := t.ja3Digest
-	if t.chiLockState {
-		t.chiLock.Unlock()
+func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/ja3":
+		resp := utils.JSON{
+			"ja3":        t.ja3,
+			"ja3_digest": t.ja3Digest,
+			"sorted": utils.JSON{
+				"ja3":        t.sortedJa3,
+				"ja3_digest": t.sortedDigest,
+			},
+		}
+		if t.chiLockState {
+			t.chiLock.Unlock()
+		}
+		t.chiLockState = false
+
+		log.Println(r.RemoteAddr)
+
+		w.Header().Set("Content-Type", "application/json")
+
+		fmt.Fprint(w, resp)
+	default:
+		http.NotFound(w, r)
 	}
-	t.chiLockState = false
-
-	log.Println(r.RemoteAddr)
-
-	fmt.Fprintf(w, `{"ja3":"%s","ja3_digest":"%s","sorted_digest":"%s","sorted_ja3":"%s"}`, ja3, ja3Digest, t.sortedDigest, t.sortedJa3)
-}
-
-func main() {
-	handler := &tlsHandler{}
-	listener, _ := tls.Listen("tcp", ":4443", &tls.Config{
-		GetCertificate: handler.GetClientInfo,
-	})
-	// Start the server
-	http.Serve(listener, handler)
-
-}
-
-// GenX509KeyPair generates the TLS keypair for the server
-func GenX509KeyPair() *tls.Certificate {
-	now := time.Now()
-	template := &x509.Certificate{
-		SerialNumber: big.NewInt(now.Unix()),
-		Subject: pkix.Name{
-			CommonName:         "localhost",
-			Country:            []string{"USA"},
-			Organization:       []string{"localhost"},
-			OrganizationalUnit: []string{"quickserve"},
-		},
-		NotBefore:             now,
-		NotAfter:              now.AddDate(0, 0, 1), // Valid for one day
-		SubjectKeyId:          []byte{113, 117, 105, 99, 107, 115, 101, 114, 118, 101},
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		KeyUsage: x509.KeyUsageKeyEncipherment |
-			x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-	}
-
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		panic(err)
-	}
-
-	cert, err := x509.CreateCertificate(rand.Reader, template, template,
-		priv.Public(), priv)
-	if err != nil {
-		panic(err)
-	}
-
-	var outCert tls.Certificate
-	outCert.Certificate = append(outCert.Certificate, cert)
-	outCert.PrivateKey = priv
-
-	return &outCert
 }
 
 func JA3(c *tls.ClientHelloInfo) string {
@@ -125,7 +97,6 @@ func JA3(c *tls.ClientHelloInfo) string {
 		0x8a8a: true, 0x9a9a: true, 0xaaaa: true, 0xbaba: true,
 		0xcaca: true, 0xdada: true, 0xeaea: true, 0xfafa: true,
 	}
-
 	// SSLVersion,Cipher,SSLExtension,EllipticCurve,EllipticCurvePointFormat
 
 	s := ""
@@ -144,7 +115,6 @@ func JA3(c *tls.ClientHelloInfo) string {
 		if _, ok := greaseTable[v]; ok {
 			continue
 		}
-
 		vals = append(vals, fmt.Sprintf("%d", v))
 	}
 
