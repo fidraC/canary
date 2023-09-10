@@ -20,7 +20,6 @@ import (
 type tlsHandler struct {
 	ja3          string
 	ja3Digest    string
-	hello        *tls.ClientHelloInfo
 	chiLock      sync.Mutex
 	chiLockState bool
 }
@@ -30,7 +29,6 @@ func (t *tlsHandler) GetClientInfo(info *tls.ClientHelloInfo) (*tls.Certificate,
 	t.chiLockState = true
 	t.ja3 = JA3(info)
 	t.ja3Digest = JA3Digest(t.ja3)
-	t.hello = info
 	go func() {
 		time.Sleep(time.Second)
 		if t.chiLockState {
@@ -50,7 +48,7 @@ func (t *tlsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	t.chiLockState = false
 
-	fmt.Fprintln(w, ja3, ja3Digest)
+	fmt.Fprintf(w, `{"ja3":"%s","ja3_digest":"%s"}`, ja3, ja3Digest)
 }
 
 func main() {
