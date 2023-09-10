@@ -4,11 +4,9 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,16 +40,16 @@ type TLSHandler struct {
 func (t *TLSHandler) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	t.chiLock.Lock()
 	t.chiLockState = true
+
 	t.ja3 = JA3(info)
 	t.ja3Digest = JA3Digest(t.ja3)
-	jaSlice := strings.Split(strings.ReplaceAll(t.ja3, ",", "-"), "-")
-	sort.Slice(jaSlice, func(i, j int) bool {
-		ji, _ := strconv.Atoi(jaSlice[i])
-		jj, _ := strconv.Atoi(jaSlice[j])
-		return ji < jj
+
+	// Sort extensions
+	sort.Slice(info.Extensions, func(i, j int) bool {
+		return info.Extensions[i] < info.Extensions[j]
 	})
-	t.sortedDigest = JA3Digest(strings.Join(jaSlice, ","))
-	t.sortedJa3 = strings.Join(jaSlice, ",")
+	t.sortedJa3 = JA3(info)
+	t.sortedDigest = JA3Digest(t.sortedJa3)
 
 	go func() {
 		time.Sleep(time.Second)
@@ -80,8 +78,6 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		t.chiLockState = false
 
-		log.Println(r.RemoteAddr)
-
 		w.Header().Set("Content-Type", "application/json")
 
 		fmt.Fprint(w, resp)
@@ -104,6 +100,9 @@ func JA3(c *tls.ClientHelloInfo) string {
 
 	vals := []string{}
 	for _, v := range c.CipherSuites {
+		if _, ok := greaseTable[v]; ok {
+			continue
+		}
 		vals = append(vals, fmt.Sprintf("%d", v))
 	}
 
@@ -122,6 +121,9 @@ func JA3(c *tls.ClientHelloInfo) string {
 
 	vals = []string{}
 	for _, v := range c.SupportedCurves {
+		if _, ok := greaseTable[uint16(v)]; ok {
+			continue
+		}
 		vals = append(vals, fmt.Sprintf("%d", v))
 	}
 
