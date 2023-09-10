@@ -7,12 +7,13 @@ import (
 )
 
 func main() {
-	handler := fingerprinting.NewHandler()
-	listener, err := fingerprinting.NewListener(handler)
+	ja3Handler := fingerprinting.NewHandler()
+	listener, err := fingerprinting.NewListener(ja3Handler)
 	if err != nil {
 		panic(err)
 	}
-	// Start the server
-	http.Serve(listener, handler)
+	router := http.NewServeMux()
+	router.HandleFunc("/ja3", ja3Handler.ServeHTTP)
+	http.Serve(listener, router)
 
 }

@@ -63,27 +63,23 @@ func (t *TLSHandler) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate
 }
 
 func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
-	case "/ja3":
-		resp := utils.JSON{
-			"ja3":        t.ja3,
-			"ja3_digest": t.ja3Digest,
-			"sorted": utils.JSON{
-				"ja3":        t.sortedJa3,
-				"ja3_digest": t.sortedDigest,
-			},
-		}
-		if t.chiLockState {
-			t.chiLock.Unlock()
-		}
-		t.chiLockState = false
-
-		w.Header().Set("Content-Type", "application/json")
-
-		fmt.Fprint(w, resp)
-	default:
-		http.NotFound(w, r)
+	resp := utils.JSON{
+		"ja3":        t.ja3,
+		"ja3_digest": t.ja3Digest,
+		"sorted": utils.JSON{
+			"ja3":        t.sortedJa3,
+			"ja3_digest": t.sortedDigest,
+		},
 	}
+	if t.chiLockState {
+		t.chiLock.Unlock()
+	}
+	t.chiLockState = false
+
+	w.Header().Set("Content-Type", "application/json")
+
+	fmt.Fprint(w, resp)
+
 }
 
 func JA3(c *tls.ClientHelloInfo) string {
