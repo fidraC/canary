@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/fidraC/QRCanary/fingerprinting"
+	"github.com/fidraC/canary/fingerprinting"
 )
 
 func main() {

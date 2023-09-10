@@ -1,4 +1,4 @@
-module github.com/fidraC/QRCanary
+module github.com/fidraC/canary
 
 go 1.20
 

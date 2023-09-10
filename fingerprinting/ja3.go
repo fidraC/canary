@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fidraC/QRCanary/utils"
+	"github.com/fidraC/canary/utils"
 	"github.com/honeytrap/honeytrap/services/ja3/crypto/tls"
 )
 
