@@ -67,9 +67,9 @@ func GenX509KeyPair() (*tls.Certificate, error) {
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(now.Unix()),
 		Subject: pkix.Name{
-			CommonName:         "quickserve.example.com",
+			CommonName:         "localhost",
 			Country:            []string{"USA"},
-			Organization:       []string{"example.com"},
+			Organization:       []string{"localhost"},
 			OrganizationalUnit: []string{"quickserve"},
 		},
 		NotBefore:             now,
