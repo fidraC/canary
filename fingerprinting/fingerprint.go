@@ -28,7 +28,6 @@ func NewListener(handler *TLSHandler) (net.Listener, error) {
 }
 
 type TLSHandler struct {
-	sortedJa3    string
 	ja3          string
 	sortedDigest string
 	ja3Digest    string
@@ -48,8 +47,8 @@ func (t *TLSHandler) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate
 	sort.Slice(info.Extensions, func(i, j int) bool {
 		return info.Extensions[i] < info.Extensions[j]
 	})
-	t.sortedJa3 = JA3(info)
-	t.sortedDigest = JA3Digest(t.sortedJa3)
+	sortedJa3 := JA3(info)
+	t.sortedDigest = JA3Digest(sortedJa3)
 
 	go func() {
 		time.Sleep(time.Second)
@@ -63,13 +62,16 @@ func (t *TLSHandler) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate
 }
 
 func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	ua := r.Header.Get("User-Agent")
+	ip_addr := strings.Split(r.RemoteAddr, ":")[0]
+	forwarded := r.Header.Get("X-FORWARDED-FOR")
 	resp := utils.JSON{
-		"ja3":        t.ja3,
-		"ja3_digest": t.ja3Digest,
-		"sorted": utils.JSON{
-			"ja3":        t.sortedJa3,
-			"ja3_digest": t.sortedDigest,
-		},
+		"ja3":             t.ja3,
+		"ja3_digest":      t.ja3Digest,
+		"nja3_digest":     t.sortedDigest,
+		"ua":              ua,
+		"ip":              ip_addr,
+		"x-forwarded-for": forwarded,
 	}
 	if t.chiLockState {
 		t.chiLock.Unlock()
