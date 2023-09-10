@@ -8,6 +8,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
 	"strings"
@@ -16,6 +17,8 @@ import (
 
 	"github.com/honeytrap/honeytrap/services/ja3/crypto/tls"
 )
+
+var cert = GenX509KeyPair()
 
 type tlsHandler struct {
 	ja3          string
@@ -37,7 +40,7 @@ func (t *tlsHandler) GetClientInfo(info *tls.ClientHelloInfo) (*tls.Certificate,
 		}
 	}()
 
-	return GenX509KeyPair()
+	return cert, nil
 }
 
 func (t *tlsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -47,6 +50,8 @@ func (t *tlsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		t.chiLock.Unlock()
 	}
 	t.chiLockState = false
+
+	log.Println(r.RemoteAddr)
 
 	fmt.Fprintf(w, `{"ja3":"%s","ja3_digest":"%s"}`, ja3, ja3Digest)
 }
@@ -62,7 +67,7 @@ func main() {
 }
 
 // GenX509KeyPair generates the TLS keypair for the server
-func GenX509KeyPair() (*tls.Certificate, error) {
+func GenX509KeyPair() *tls.Certificate {
 	now := time.Now()
 	template := &x509.Certificate{
 		SerialNumber: big.NewInt(now.Unix()),
@@ -84,20 +89,20 @@ func GenX509KeyPair() (*tls.Certificate, error) {
 
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		return &tls.Certificate{}, err
+		panic(err)
 	}
 
 	cert, err := x509.CreateCertificate(rand.Reader, template, template,
 		priv.Public(), priv)
 	if err != nil {
-		return &tls.Certificate{}, err
+		panic(err)
 	}
 
 	var outCert tls.Certificate
 	outCert.Certificate = append(outCert.Certificate, cert)
 	outCert.PrivateKey = priv
 
-	return &outCert, nil
+	return &outCert
 }
 
 func JA3(c *tls.ClientHelloInfo) string {
