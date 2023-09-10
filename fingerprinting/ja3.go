@@ -11,6 +11,8 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +23,9 @@ import (
 var cert = GenX509KeyPair()
 
 type tlsHandler struct {
+	sortedJa3    string
 	ja3          string
+	sortedDigest string
 	ja3Digest    string
 	chiLock      sync.Mutex
 	chiLockState bool
@@ -32,6 +36,15 @@ func (t *tlsHandler) GetClientInfo(info *tls.ClientHelloInfo) (*tls.Certificate,
 	t.chiLockState = true
 	t.ja3 = JA3(info)
 	t.ja3Digest = JA3Digest(t.ja3)
+	jaSlice := strings.Split(strings.ReplaceAll(t.ja3, ",", "-"), "-")
+	sort.Slice(jaSlice, func(i, j int) bool {
+		ji, _ := strconv.Atoi(jaSlice[i])
+		jj, _ := strconv.Atoi(jaSlice[j])
+		return ji < jj
+	})
+	t.sortedDigest = JA3Digest(strings.Join(jaSlice, ","))
+	t.sortedJa3 = strings.Join(jaSlice, ",")
+
 	go func() {
 		time.Sleep(time.Second)
 		if t.chiLockState {
@@ -53,7 +66,7 @@ func (t *tlsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Println(r.RemoteAddr)
 
-	fmt.Fprintf(w, `{"ja3":"%s","ja3_digest":"%s"}`, ja3, ja3Digest)
+	fmt.Fprintf(w, `{"ja3":"%s","ja3_digest":"%s","sorted_digest":"%s","sorted_ja3":"%s"}`, ja3, ja3Digest, t.sortedDigest, t.sortedJa3)
 }
 
 func main() {
