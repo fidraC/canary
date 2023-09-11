@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/fidraC/canary/api/fingerprinting"
 )
@@ -34,6 +35,23 @@ func main() {
 			w.Write([]byte(err.Error()))
 			return
 		}
+		// Determine content type based on file extension
+		contentType := "text/plain"
+		switch {
+		case strings.HasSuffix(r.URL.Path, ".html"):
+			contentType = "text/html"
+		case strings.HasSuffix(r.URL.Path, ".css"):
+			contentType = "text/css"
+		case strings.HasSuffix(r.URL.Path, ".js"):
+			contentType = "application/javascript"
+		case strings.HasSuffix(r.URL.Path, ".png"):
+			contentType = "image/png"
+		case strings.HasSuffix(r.URL.Path, ".ico"):
+			contentType = "image/x-icon"
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Content-Security-Policy", "default-src *")
+
 		w.Write(file)
 
 	})

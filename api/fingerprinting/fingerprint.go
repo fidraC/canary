@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fidraC/canary/cryptojs"
 	"github.com/fidraC/canary/utils"
 	"github.com/honeytrap/honeytrap/services/ja3/crypto/tls"
 )
@@ -89,7 +90,6 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println(err)
-		// 400 error
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -97,19 +97,49 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	form, err := url.ParseQuery(string(body))
 	if err != nil {
 		log.Println(err)
-		// 400 error
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	fp_string := form.Get("creep")
+	sDInfo := form.Get("info")
+	var dInfo struct {
+		ID          string `json:"id"`
+		Performance int    `json:"performance"`
+	}
+	err = json.Unmarshal([]byte(sDInfo), &dInfo)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	charCodes := make([]int, len(dInfo.ID))
+	for i, c := range dInfo.ID {
+		charCodes[i] = int(c) + (dInfo.Performance % 24)
+	}
+	dInfo.ID = string(runeSliceToRune(charCodes))
+
+	ceilToHourTime := int64(time.Now().Add(time.Hour-time.Duration(time.Now().Minute())*time.Minute-time.Duration(time.Now().Second())*time.Second).Round(time.Hour).UnixNano() / 1e6)
+
+	secretKey := fmt.Sprintf("%s%s%d", dInfo.ID, ua, ceilToHourTime)
+
+	fp_secret := form.Get("secret")
+
+	// Remove first and last character
+	fp_secret = fp_secret[1 : len(fp_secret)-1]
+
+	// Decrypt fp_secret with secretKey using AES
+	fp_string, err := cryptojs.AesDecrypt(fp_secret, secretKey)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 
 	var fp any
 	err = json.Unmarshal([]byte(fp_string), &fp)
 	if err != nil {
 		log.Println(err)
-		// 500 error
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 	resp["fingerprint"] = fp
@@ -176,4 +206,12 @@ func JA3Digest(ja3 string) string {
 	hasher := md5.New()
 	hasher.Write([]byte(ja3))
 	return hex.EncodeToString(hasher.Sum(nil))
+}
+
+func runeSliceToRune(slice []int) []rune {
+	result := make([]rune, len(slice))
+	for i, v := range slice {
+		result[i] = rune(v)
+	}
+	return result
 }
