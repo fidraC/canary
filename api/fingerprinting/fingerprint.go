@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"net/url"
 	"sort"
@@ -18,18 +17,6 @@ import (
 	"github.com/fidraC/canary/ja3"
 	"github.com/fidraC/canary/utils"
 )
-
-func NewHandler() *TLSHandler {
-	return &TLSHandler{
-		TLSCert: GenX509KeyPair(),
-	}
-}
-
-func NewListener(handler *TLSHandler) (net.Listener, error) {
-	return tls.Listen("tcp", ":4443", &tls.Config{
-		GetCertificate: handler.GetCertificate,
-	})
-}
 
 type TLSHandler struct {
 	ja3          string

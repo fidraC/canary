@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	fingerprinter := fingerprinting.NewHandler()
+	fingerprinter := fingerprinting.NewHandler(nil)
 	listener, err := fingerprinting.NewListener(fingerprinter)
 	if err != nil {
 		panic(err)
