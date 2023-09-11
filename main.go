@@ -50,7 +50,6 @@ func main() {
 			contentType = "image/x-icon"
 		}
 		w.Header().Set("Content-Type", contentType)
-		w.Header().Set("Content-Security-Policy", "default-src *")
 
 		w.Write(file)
 
