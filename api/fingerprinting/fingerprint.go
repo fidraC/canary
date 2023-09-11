@@ -1,8 +1,6 @@
 package fingerprinting
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,9 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fidraC/canary/cryptojs"
+	"github.com/fidraC/canary/creepjs"
+	"github.com/fidraC/canary/crypto/tls"
+	"github.com/fidraC/canary/ja3"
 	"github.com/fidraC/canary/utils"
-	"github.com/honeytrap/honeytrap/services/ja3/crypto/tls"
 )
 
 func NewHandler() *TLSHandler {
@@ -45,15 +44,15 @@ func (t *TLSHandler) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate
 	t.chiLock.Lock()
 	t.chiLockState = true
 
-	t.ja3 = JA3(info)
-	t.ja3Digest = JA3Digest(t.ja3)
+	t.ja3 = ja3.String(info)
+	t.ja3Digest = ja3.Hash(t.ja3)
 
 	// Sort extensions
 	sort.Slice(info.Extensions, func(i, j int) bool {
 		return info.Extensions[i] < info.Extensions[j]
 	})
-	sortedJa3 := JA3(info)
-	t.sortedDigest = JA3Digest(sortedJa3)
+	sortedJa3 := ja3.String(info)
+	t.sortedDigest = ja3.Hash(sortedJa3)
 
 	go func() {
 		time.Sleep(time.Second)
@@ -112,106 +111,23 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	charCodes := make([]int, len(dInfo.ID))
-	for i, c := range dInfo.ID {
-		charCodes[i] = int(c) + (dInfo.Performance % 24)
-	}
-	dInfo.ID = string(runeSliceToRune(charCodes))
-
-	ceilToHourTime := int64(time.Now().Add(time.Hour-time.Duration(time.Now().Minute())*time.Minute-time.Duration(time.Now().Second())*time.Second).Round(time.Hour).UnixNano() / 1e6)
-
-	secretKey := fmt.Sprintf("%s%s%d", dInfo.ID, ua, ceilToHourTime)
 
 	fp_secret := form.Get("secret")
 
 	// Remove first and last character
 	fp_secret = fp_secret[1 : len(fp_secret)-1]
 
-	// Decrypt fp_secret with secretKey using AES
-	fp_string, err := cryptojs.AesDecrypt(fp_secret, secretKey)
+	fp, err := creepjs.DecryptCreep(dInfo.ID, dInfo.Performance, ua, fp_secret)
+
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
-	var fp any
-	err = json.Unmarshal([]byte(fp_string), &fp)
-	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusUnauthorized)
-		return
-	}
 	resp["fingerprint"] = fp
 
 	w.Header().Set("Content-Type", "application/json")
 
 	fmt.Fprint(w, resp)
-}
-
-func JA3(c *tls.ClientHelloInfo) string {
-	greaseTable := map[uint16]bool{
-		0x0a0a: true, 0x1a1a: true, 0x2a2a: true, 0x3a3a: true,
-		0x4a4a: true, 0x5a5a: true, 0x6a6a: true, 0x7a7a: true,
-		0x8a8a: true, 0x9a9a: true, 0xaaaa: true, 0xbaba: true,
-		0xcaca: true, 0xdada: true, 0xeaea: true, 0xfafa: true,
-	}
-	// SSLVersion,Cipher,SSLExtension,EllipticCurve,EllipticCurvePointFormat
-
-	s := ""
-	s += fmt.Sprintf("%d,", c.Version)
-
-	vals := []string{}
-	for _, v := range c.CipherSuites {
-		if _, ok := greaseTable[v]; ok {
-			continue
-		}
-		vals = append(vals, fmt.Sprintf("%d", v))
-	}
-
-	s += fmt.Sprintf("%s,", strings.Join(vals, "-"))
-
-	vals = []string{}
-	c.Extensions = append([]uint16{0x0000}, c.Extensions...)
-	for _, v := range c.Extensions {
-		if _, ok := greaseTable[v]; ok {
-			continue
-		}
-		vals = append(vals, fmt.Sprintf("%d", v))
-	}
-
-	s += fmt.Sprintf("%s,", strings.Join(vals, "-"))
-
-	vals = []string{}
-	for _, v := range c.SupportedCurves {
-		if _, ok := greaseTable[uint16(v)]; ok {
-			continue
-		}
-		vals = append(vals, fmt.Sprintf("%d", v))
-	}
-
-	s += fmt.Sprintf("%s,", strings.Join(vals, "-"))
-
-	vals = []string{}
-	for _, v := range c.SupportedPoints {
-		vals = append(vals, fmt.Sprintf("%d", v))
-	}
-
-	s += strings.Join(vals, "-")
-
-	return s
-}
-
-func JA3Digest(ja3 string) string {
-	hasher := md5.New()
-	hasher.Write([]byte(ja3))
-	return hex.EncodeToString(hasher.Sum(nil))
-}
-
-func runeSliceToRune(slice []int) []rune {
-	result := make([]rune, len(slice))
-	for i, v := range slice {
-		result[i] = rune(v)
-	}
-	return result
 }

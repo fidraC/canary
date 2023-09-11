@@ -8,7 +8,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/honeytrap/honeytrap/services/ja3/crypto/tls"
+	"github.com/fidraC/canary/crypto/tls"
 )
 
 // GenX509KeyPair generates the TLS keypair for the server
