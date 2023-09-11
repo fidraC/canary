@@ -3,7 +3,10 @@ package fingerprinting
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"sort"
@@ -78,10 +81,26 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	t.chiLockState = false
 
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Println(err)
+		// 400 error
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	var fp any
+	err = json.Unmarshal(body, &fp)
+	if err != nil {
+		log.Println(err)
+		// 500 error
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	resp["fingerprint"] = fp
+
 	w.Header().Set("Content-Type", "application/json")
 
 	fmt.Fprint(w, resp)
-
 }
 
 func JA3(c *tls.ClientHelloInfo) string {
