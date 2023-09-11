@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -65,6 +66,10 @@ func (t *TLSHandler) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate
 }
 
 func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	ua := r.Header.Get("User-Agent")
 	ip_addr := strings.Split(r.RemoteAddr, ":")[0]
 	forwarded := r.Header.Get("X-FORWARDED-FOR")
@@ -88,8 +93,19 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// Parse body as form
+	form, err := url.ParseQuery(string(body))
+	if err != nil {
+		log.Println(err)
+		// 400 error
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	fp_string := form.Get("creep")
+
 	var fp any
-	err = json.Unmarshal(body, &fp)
+	err = json.Unmarshal([]byte(fp_string), &fp)
 	if err != nil {
 		log.Println(err)
 		// 500 error
