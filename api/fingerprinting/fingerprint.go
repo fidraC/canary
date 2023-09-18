@@ -100,7 +100,7 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var browserInfo BrowserInfo
+	var browserInfo any
 
 	err = creepjs.DecryptCreep(req.Keys.ID, req.Keys.Performance, req.Keys.UA, req.Secret, &browserInfo)
 
