@@ -6,7 +6,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"sort"
 	"strings"
 	"sync"
@@ -16,6 +15,7 @@ import (
 	"github.com/fidraC/canary/crypto/tls"
 	"github.com/fidraC/canary/database"
 	"github.com/fidraC/canary/ja3"
+	"github.com/fidraC/canary/utils"
 	uuid "github.com/uuid6/uuid6go-proto"
 )
 
@@ -82,45 +82,35 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	// Parse body as form
-	form, err := url.ParseQuery(string(body))
+	defer r.Body.Close()
+
+	var req struct {
+		Secret string `json:"secret"`
+		Keys   struct {
+			ID          string `json:"id"`
+			Performance int    `json:"performance"`
+		} `json:"keys"`
+	}
+
+	err = json.Unmarshal(body, &req)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	sDInfo := form.Get("info")
-	var dInfo struct {
-		ID          string `json:"id"`
-		Performance int    `json:"performance"`
-	}
-	err = json.Unmarshal([]byte(sDInfo), &dInfo)
+	var browserInfo BrowserInfo
+
+	err = creepjs.DecryptCreep(req.Keys.ID, req.Keys.Performance, ua, req.Secret, &browserInfo)
+
 	if err != nil {
 		log.Println(err)
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
+
 	}
 
-	fp_secret := form.Get("secret")
-
-	// Remove first and last character
-	fp_secret = fp_secret[1 : len(fp_secret)-1]
-
-	var fingerprint Fingerprint
-
-	err = creepjs.DecryptCreep(dInfo.ID, dInfo.Performance, ua, fp_secret, &fingerprint)
-
-	if err != nil {
-		err = creepjs.DecryptCreep(dInfo.ID, dInfo.Performance, "undefined", fp_secret, &fingerprint)
-		if err != nil {
-			log.Println(err)
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
-
-	resp.Fingerprint = fingerprint
+	resp.Fingerprint = browserInfo
 
 	// Store fingerprint in database
 	id := gen.Next()
@@ -130,11 +120,13 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		UserAgent:     ua,
 		IP:            ip_addr,
 		XForwardedFor: forwarded,
-		CreepID:       dInfo.ID,
+		CreepID:       req.Keys.ID,
 		Data:          resp.String(),
 	})
 
 	w.Header().Set("Content-Type", "application/json")
-
-	fmt.Fprint(w, resp.String())
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprint(w, utils.JSON{
+		"redirect": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+	})
 }

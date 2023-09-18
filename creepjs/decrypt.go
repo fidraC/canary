@@ -18,6 +18,7 @@ func DecryptCreep(creepID string, perf int, ua, fp_secret string, fp any) error 
 	ceilToHourTime := int64(time.Now().Add(time.Hour-time.Duration(time.Now().Minute())*time.Minute-time.Duration(time.Now().Second())*time.Second).Round(time.Hour).UnixNano() / 1e6)
 
 	secretKey := fmt.Sprintf("%s%s%d", creepID, ua, ceilToHourTime)
+	// log.Println(secretKey)
 	fp_string, err := cryptojs.AesDecrypt(fp_secret, secretKey)
 	if err != nil {
 		return err

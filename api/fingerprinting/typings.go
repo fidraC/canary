@@ -94,35 +94,9 @@ type BrowserInfo struct {
 	WebglParams                  string        `json:"webglParams"`
 	WorkerEnabled                string        `json:"workerEnabled"`
 }
-type Summary struct {
-	BotHash      string      `json:"botHash"`
-	CanvasHash   string      `json:"canvasHash"`
-	ErrorsLen    int         `json:"errorsLen"`
-	Fuzzy        string      `json:"fuzzy"`
-	GlBc         string      `json:"glBc"`
-	ID           string      `json:"id"`
-	LiesLen      int         `json:"liesLen"`
-	Measured     int         `json:"measured"`
-	Perf         string      `json:"perf"`
-	Resistance   string      `json:"resistance"`
-	SQuota       int64       `json:"sQuota"`
-	ScreenHash   string      `json:"screenHash"`
-	StackBytes   string      `json:"stackBytes"`
-	SubID        string      `json:"subId"`
-	TimeZoneHash string      `json:"timeZoneHash"`
-	TmSum        float64     `json:"tmSum"`
-	TrashLen     int         `json:"trashLen"`
-	Ttfb         interface{} `json:"ttfb"`
-	WebglHash    string      `json:"webglHash"`
-}
-
-type Fingerprint struct {
-	Browser BrowserInfo `json:"browser"`
-	Summary Summary     `json:"summary"`
-}
 
 type FullFingerprint struct {
-	Fingerprint         Fingerprint `json:"fingerprint"`
+	Fingerprint         BrowserInfo `json:"fingerprint"`
 	IP                  string      `json:"ip"`
 	Ja3                 string      `json:"ja3"`
 	Ja3Digest           string      `json:"ja3_digest"`
