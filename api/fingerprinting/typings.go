@@ -12,10 +12,10 @@ type FullFingerprint struct {
 	XForwardedFor       string `json:"x-forwarded-for"`
 }
 
-func (f *FullFingerprint) String() string {
+func (f *FullFingerprint) String() []byte {
 	str, err := json.Marshal(f)
 	if err != nil {
-		return ""
+		return nil
 	}
-	return string(str)
+	return str
 }

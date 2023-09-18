@@ -11,3 +11,11 @@ func (j JSON) String() string {
 	}
 	return string(b)
 }
+
+func Stringify(i interface{}) string {
+	b, err := json.Marshal(i)
+	if err != nil {
+		return ""
+	}
+	return string(b)
+}

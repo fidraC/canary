@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/fidraC/canary/api/canaries"
 	"github.com/fidraC/canary/api/fingerprinting"
 	"github.com/fidraC/canary/crypto/tls"
 	"github.com/fidraC/canary/static"
@@ -31,6 +32,8 @@ func main() {
 	router := http.NewServeMux()
 	router.HandleFunc("/finger", fingerprinter.ServeHTTP)
 	router.HandleFunc("/", static.StaticHandler)
+	router.HandleFunc("/configure", canaries.ConfigureHandler)
+	router.HandleFunc("/canaries", canaries.HandleGetCanaries)
 	log.Println("Listening on :4443")
 	http.Serve(listener, router)
 

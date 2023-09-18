@@ -131,16 +131,19 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Store fingerprint in database
 	id := gen.Next()
-	database.SaveFingerprint(&database.Fingerprint{
-		ID:            id.ToString(),
-		SortedJA3:     t.sortedDigest,
-		UserAgent:     ua,
-		IP:            ip_addr,
-		XForwardedFor: forwarded,
-		CreepID:       req.Keys.ID,
-		Data:          resp.String(),
-		BadUA:         ua != req.Keys.UA,
-	}, referrer)
+	f := database.FingerprintWithData{
+		Fingerprint: database.Fingerprint{
+			ID:            id.ToString(),
+			SortedJA3:     t.sortedDigest,
+			UserAgent:     ua,
+			IP:            ip_addr,
+			XForwardedFor: forwarded,
+			CreepID:       req.Keys.ID,
+			BadUA:         ua != req.Keys.UA,
+		},
+		Data: resp.String(),
+	}
+	database.SaveFingerprint(&f, referrer)
 
 	if ua != req.Keys.UA {
 		log.Println("Bad UA")

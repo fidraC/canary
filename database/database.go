@@ -15,9 +15,12 @@ type Fingerprint struct {
 	IP            string
 	XForwardedFor string
 	CreepID       string
-	Data          string
 	BadUA         bool
 	Note          string
+}
+type FingerprintWithData struct {
+	Fingerprint
+	Data []byte
 }
 
 type CanaryNote struct {
@@ -33,22 +36,29 @@ func init() {
 	if err != nil {
 		panic("failed to connect database")
 	}
-	DB.AutoMigrate(&Fingerprint{}, &CanaryNote{})
+	DB.AutoMigrate(&FingerprintWithData{}, &CanaryNote{})
 }
 
-func SaveFingerprint(fingerprint *Fingerprint, noteID string) {
+func SaveFingerprint(fingerprint *FingerprintWithData, noteID string) {
 	if noteID != "" {
 		var note CanaryNote
-		DB.First(&note, noteID)
+		DB.First(&note, &CanaryNote{ID: noteID})
 		fingerprint.Note = note.Note
 	}
-
 	DB.Create(fingerprint)
 }
 
-func NewNote(note string) {
+func NewNote(note string) string {
+	id := gen.Next().ToString()
 	DB.Create(&CanaryNote{
-		ID:   gen.Next().ToString(),
+		ID:   id,
 		Note: note,
 	})
+	return id
+}
+
+func GetFingerPrints() []Fingerprint {
+	var fingerprints []Fingerprint
+	DB.Find(&fingerprints)
+	return fingerprints
 }
