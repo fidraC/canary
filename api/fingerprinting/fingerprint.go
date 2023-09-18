@@ -100,7 +100,7 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var browserInfo any
+	var browserInfo map[string]interface{}
 
 	err = creepjs.DecryptCreep(req.Keys.ID, req.Keys.Performance, req.Keys.UA, req.Secret, &browserInfo)
 
@@ -135,7 +135,7 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Fingerprint: database.Fingerprint{
 			ID:            id.ToString(),
 			SortedJA3:     t.sortedDigest,
-			UserAgent:     ua,
+			UserAgent:     req.Keys.UA,
 			IP:            ip_addr,
 			XForwardedFor: forwarded,
 			CreepID:       req.Keys.ID,
@@ -145,7 +145,7 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	database.SaveFingerprint(&f, referrer)
 
-	if ua != req.Keys.UA {
+	if ua != req.Keys.UA { // We don't need to check the actual UA because decryption would fail if it's faked
 		log.Println("Bad UA")
 		w.WriteHeader(http.StatusUnauthorized)
 		return
