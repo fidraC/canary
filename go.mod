@@ -2,6 +2,24 @@ module github.com/fidraC/canary
 
 go 1.20
 
-require golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d
+require (
+	github.com/glebarez/sqlite v1.9.0
+	github.com/uuid6/uuid6go-proto v0.2.1
+	golang.org/x/crypto v0.0.0-20200128174031-69ecbb4d6d5d
+	gorm.io/gorm v1.25.4
+)
 
-require golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
+require (
+	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/glebarez/go-sqlite v1.21.2 // indirect
+	github.com/google/uuid v1.3.0 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/mattn/go-isatty v0.0.17 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	modernc.org/libc v1.22.5 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.5.0 // indirect
+	modernc.org/sqlite v1.23.1 // indirect
+)

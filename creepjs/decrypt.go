@@ -8,7 +8,7 @@ import (
 	"github.com/fidraC/canary/cryptojs"
 )
 
-func DecryptCreep(creepID string, perf int, ua, fp_secret string) (any, error) {
+func DecryptCreep(creepID string, perf int, ua, fp_secret string, fp any) error {
 	charCodes := make([]int, len(creepID))
 	for i, c := range creepID {
 		charCodes[i] = int(c) + (perf % 24)
@@ -20,14 +20,13 @@ func DecryptCreep(creepID string, perf int, ua, fp_secret string) (any, error) {
 	secretKey := fmt.Sprintf("%s%s%d", creepID, ua, ceilToHourTime)
 	fp_string, err := cryptojs.AesDecrypt(fp_secret, secretKey)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var fp any
-	err = json.Unmarshal([]byte(fp_string), &fp)
+	err = json.Unmarshal([]byte(fp_string), fp)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return fp, nil
+	return nil
 }
 
 func runeSliceToRune(slice []int) []rune {

@@ -14,9 +14,12 @@ import (
 
 	"github.com/fidraC/canary/creepjs"
 	"github.com/fidraC/canary/crypto/tls"
+	"github.com/fidraC/canary/database"
 	"github.com/fidraC/canary/ja3"
-	"github.com/fidraC/canary/utils"
+	uuid "github.com/uuid6/uuid6go-proto"
 )
+
+var gen uuid.UUIDv7Generator
 
 type TLSHandler struct {
 	ja3          string
@@ -60,13 +63,13 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ua := r.Header.Get("User-Agent")
 	ip_addr := strings.Split(r.RemoteAddr, ":")[0]
 	forwarded := r.Header.Get("X-FORWARDED-FOR")
-	resp := utils.JSON{
-		"ja3":             t.ja3,
-		"ja3_digest":      t.ja3Digest,
-		"nja3_digest":     t.sortedDigest,
-		"ua":              ua,
-		"ip":              ip_addr,
-		"x-forwarded-for": forwarded,
+	resp := FullFingerprint{
+		Ja3:                 t.ja3,
+		Ja3Digest:           t.ja3Digest,
+		NormalizedJa3Digest: t.sortedDigest,
+		UserAgent:           ua,
+		IP:                  ip_addr,
+		XForwardedFor:       forwarded,
 	}
 	if t.chiLockState {
 		t.chiLock.Unlock()
@@ -104,17 +107,34 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Remove first and last character
 	fp_secret = fp_secret[1 : len(fp_secret)-1]
 
-	fp, err := creepjs.DecryptCreep(dInfo.ID, dInfo.Performance, ua, fp_secret)
+	var fingerprint Fingerprint
+
+	err = creepjs.DecryptCreep(dInfo.ID, dInfo.Performance, ua, fp_secret, &fingerprint)
 
 	if err != nil {
-		log.Println(err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		err = creepjs.DecryptCreep(dInfo.ID, dInfo.Performance, "undefined", fp_secret, &fingerprint)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 
-	resp["fingerprint"] = fp
+	resp.Fingerprint = fingerprint
+
+	// Store fingerprint in database
+	id := gen.Next()
+	database.SaveFingerprint(&database.Fingerprint{
+		ID:            id.ToString(),
+		SortedJA3:     t.sortedDigest,
+		UserAgent:     ua,
+		IP:            ip_addr,
+		XForwardedFor: forwarded,
+		CreepID:       dInfo.ID,
+		Data:          resp.String(),
+	})
 
 	w.Header().Set("Content-Type", "application/json")
 
-	fmt.Fprint(w, resp)
+	fmt.Fprint(w, resp.String())
 }
