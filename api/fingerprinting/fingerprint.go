@@ -111,6 +111,18 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	}
 
+	referrer := r.Referer()
+	// Remove origin
+	origin := r.Header.Get("Origin")
+	if len(origin) > 0 {
+		referrer = strings.ReplaceAll(referrer, origin, "")
+	}
+	// Remove trailing slash
+	if len(referrer) > 0 && referrer[len(referrer)-1] == '/' {
+		referrer = referrer[:len(referrer)-1]
+	}
+	log.Println("Referrer:", referrer)
+
 	resp.Fingerprint = browserInfo
 
 	// Store fingerprint in database
@@ -124,7 +136,7 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		CreepID:       req.Keys.ID,
 		Data:          resp.String(),
 		BadUA:         ua != req.Keys.UA,
-	})
+	}, referrer)
 
 	if ua != req.Keys.UA {
 		log.Println("Bad UA")

@@ -18,9 +18,13 @@ func StaticHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	file, err = staticFS.ReadFile(fmt.Sprintf("dist%s", r.URL.Path))
 	if err != nil {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(err.Error()))
-		return
+		r.URL.Path = "/index.html"
+		file, err = staticFS.ReadFile("dist/index.html")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("500 - Something bad happened!"))
+			return
+		}
 	}
 	// Determine content type based on file extension
 	contentType := "text/plain"
