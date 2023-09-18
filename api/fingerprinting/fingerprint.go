@@ -121,6 +121,10 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if len(referrer) > 0 && referrer[len(referrer)-1] == '/' {
 		referrer = referrer[:len(referrer)-1]
 	}
+	// Remove starting slash
+	if len(referrer) > 0 && referrer[0] == '/' {
+		referrer = referrer[1:]
+	}
 	log.Println("Referrer:", referrer)
 
 	resp.Fingerprint = browserInfo
