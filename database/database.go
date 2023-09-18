@@ -59,6 +59,6 @@ func NewNote(note string) string {
 
 func GetFingerPrints() []Fingerprint {
 	var fingerprints []Fingerprint
-	DB.Find(&fingerprints)
+	DB.Model(&FingerprintWithData{}).Find(&fingerprints)
 	return fingerprints
 }
