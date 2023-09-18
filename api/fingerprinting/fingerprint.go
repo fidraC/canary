@@ -89,6 +89,7 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		Keys   struct {
 			ID          string `json:"id"`
 			Performance int    `json:"performance"`
+			UA          string `json:"ua"`
 		} `json:"keys"`
 	}
 
@@ -101,7 +102,7 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var browserInfo BrowserInfo
 
-	err = creepjs.DecryptCreep(req.Keys.ID, req.Keys.Performance, ua, req.Secret, &browserInfo)
+	err = creepjs.DecryptCreep(req.Keys.ID, req.Keys.Performance, req.Keys.UA, req.Secret, &browserInfo)
 
 	if err != nil {
 		log.Println(err)
@@ -122,8 +123,14 @@ func (t *TLSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		XForwardedFor: forwarded,
 		CreepID:       req.Keys.ID,
 		Data:          resp.String(),
+		BadUA:         ua != req.Keys.UA,
 	})
 
+	if ua != req.Keys.UA {
+		log.Println("Bad UA")
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, utils.JSON{

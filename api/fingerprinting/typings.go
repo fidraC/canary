@@ -4,8 +4,8 @@ import "encoding/json"
 
 type BrowserInfo struct {
 	Audio                        string        `json:"audio"`
-	Benchmark                    int           `json:"benchmark"`
-	BenchmarkProto               int           `json:"benchmarkProto"`
+	Benchmark                    float32       `json:"benchmark"`
+	BenchmarkProto               float32       `json:"benchmarkProto"`
 	Canvas                       string        `json:"canvas"`
 	Client                       []string      `json:"client"`
 	CSSAnyHover                  string        `json:"cssAnyHover"`

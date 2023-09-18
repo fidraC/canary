@@ -13,6 +13,7 @@ type Fingerprint struct {
 	XForwardedFor string
 	CreepID       string
 	Data          string
+	BadUA         bool
 }
 
 var DB *gorm.DB
