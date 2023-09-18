@@ -18,7 +18,7 @@ func NewHandler(certificate *tls.Certificate) *TLSHandler {
 }
 
 func NewListener(handler *TLSHandler) (net.Listener, error) {
-	return tls.Listen("tcp", "127.0.0.1:443", &tls.Config{
+	return tls.Listen("tcp", ":443", &tls.Config{
 		GetCertificate: handler.GetCertificate,
 	})
 }

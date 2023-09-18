@@ -34,7 +34,7 @@ func main() {
 	router.HandleFunc("/", static.StaticHandler)
 	router.HandleFunc("/configure", canaries.ConfigureHandler)
 	router.HandleFunc("/canaries", canaries.HandleGetCanaries)
-	log.Println("Listening on :4443")
+	log.Println("Listening on :443")
 	http.Serve(listener, router)
 
 }
